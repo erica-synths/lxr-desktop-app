@@ -2350,7 +2350,11 @@ FRESULT preset_saveProject(uint8_t presetNr)
 	}
 	else
 	{
-		res = empty_directory(currentFolder);
+		// empty_directory() appends file names to this path, which would overrun
+		// the 13-byte currentFolder into savefileNames.
+		char path[64];
+		strcpy(path, currentFolder);
+		res = empty_directory(path);
 		if(res != FR_OK)
 		{
 			lcd_process_display_interrupt = 1;
