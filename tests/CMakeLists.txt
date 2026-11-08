@@ -24,6 +24,9 @@ target_include_directories(lxr_test_common INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/shim
     ${CMAKE_CURRENT_SOURCE_DIR}/framework
     ${LXR_SOURCE_DIR}/Core/Inc
+    ${LXR_SOURCE_DIR}/FATFS/App
+    ${LXR_SOURCE_DIR}/FATFS/Target
+    ${LXR_SOURCE_DIR}/Middlewares/Third_Party/FatFs/src
 )
 target_compile_definitions(lxr_test_common INTERFACE LXR_HOST_TEST)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -60,4 +63,9 @@ lxr_add_host_test(test_fifo
 lxr_add_host_test(test_euklid
     SOURCES test_euklid.c
     FIRMWARE_SOURCES Core/Src/Soundengine/Sequencer/EuklidGenerator.c
+)
+
+lxr_add_host_test(test_frontpanel_cc
+    SOURCES test_frontpanel_cc.c
+    FIRMWARE_SOURCES Core/Src/frontPanelParser.c
 )

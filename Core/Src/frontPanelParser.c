@@ -107,9 +107,12 @@ void frontPanel_ccHandler()
 	DISABLE_SIGN_WARNING
 	if(parNr == 255/*PAR_BANK_CHANGE*/)
 	{
-		menu_selectedPresetNr[0] = frontParser_midiMsg.data2;
-		//preset_loadDrumset(frontParser_midiMsg.data2, 0);
-		preset_loadDrumsetRam(frontParser_midiMsg.data2,0, 0);
+		// A CC value is 0-127 but there are only NUM_KIT_SLOTS (64) kits in RAM,
+		// so values past the last kit wrap around (64 = kit 0, 127 = kit 63).
+		const uint8_t kitNr = frontParser_midiMsg.data2 % NUM_KIT_SLOTS;
+		menu_selectedPresetNr[0] = kitNr;
+		//preset_loadDrumset(kitNr, 0);
+		preset_loadDrumsetRam(kitNr,0, 0);
 		preset_touchTimer(PRESET_KIT_TIMER);
 		menu_repaint();
 		return;

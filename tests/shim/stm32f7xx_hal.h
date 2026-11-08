@@ -126,6 +126,18 @@ typedef struct { int unused; } RNG_HandleTypeDef;
 typedef struct { int unused; } SPI_HandleTypeDef;
 typedef struct { int unused; } PCD_HandleTypeDef;
 
+typedef struct
+{
+	uint32_t CardType;
+	uint32_t CardVersion;
+	uint32_t Class;
+	uint32_t RelCardAdd;
+	uint32_t BlockNbr;
+	uint32_t BlockSize;
+	uint32_t LogBlockNbr;
+	uint32_t LogBlockSize;
+} HAL_SD_CardInfoTypeDef;
+
 /* --- HAL functions (declared only, see above) ----------------------------- */
 uint32_t HAL_GetTick(void);
 uint32_t HAL_RCC_GetHCLKFreq(void);
