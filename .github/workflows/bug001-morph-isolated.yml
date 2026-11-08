@@ -1,0 +1,33 @@
+name: Isolated BUG001 Morph transport regression
+on:
+  push:
+    branches:
+      - pr/bug001-morph-transport-guard
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  morph-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify pinned parent and exact allowed change set
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=a43cd4fcda23ec3d577dc425261c3eb28bd5abff
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          git -c core.whitespace=cr-at-eol diff --check "$BASE" HEAD
+          git diff --name-only "$BASE" HEAD > /tmp/changed-paths.txt
+          diff -u <(printf '%s\n' \
+            '.github/workflows/bug001-morph-isolated.yml' \
+            'Core/Src/Preset/presetManager.c' \
+            'tests/morph_transport/README.md' \
+            'tests/morph_transport/run.py' \
+            'tests/morph_transport/test_sweeps.c') /tmp/changed-paths.txt
+          git diff --quiet "$BASE" HEAD -- Core/Src/Soundengine/MIDI/MidiParser.c
+      - name: Reproduce original dispatch and verify isolated Morph correction
+        run: python3 tests/morph_transport/run.py
