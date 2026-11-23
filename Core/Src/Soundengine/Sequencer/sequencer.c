@@ -519,7 +519,7 @@ void seq_triggerVoice(uint8_t voiceNr, uint8_t vol, uint8_t note)
 	voiceControl_noteOff(voiceNr);
 
 	//Trigger internal synth voice
-	voiceControl_noteOn(voiceNr, note, vol);
+	voiceControl_noteOn(voiceNr, note, vol, 0);
 
 	midiChan = midi_MidiChannels[voiceNr];
 

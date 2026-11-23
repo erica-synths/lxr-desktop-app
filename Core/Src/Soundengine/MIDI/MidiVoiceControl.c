@@ -27,7 +27,9 @@ uint8_t voiceStatus[NUM_DRUM_VOICES];
 static uint8_t active_voices=0;	// which voices are currently playing a note
 //----------------------------------------------------------------
 // this fn assumes a valid voice is sent
-void voiceControl_noteOn(uint8_t voice, uint8_t note, uint8_t vel)
+// sendMidi: also send the note to MIDI/USB out. The sequencer passes 0 because
+// it sends its own note, which takes the voice's MIDI note setting into account.
+void voiceControl_noteOn(uint8_t voice, uint8_t note, uint8_t vel, uint8_t sendMidi)
 {
 	active_voices |= (1<<voice);
 
@@ -51,7 +53,7 @@ void voiceControl_noteOn(uint8_t voice, uint8_t note, uint8_t vel)
 	}
 	*/
 
-	if (active_voices & (1<<voice))
+	if (sendMidi)
 	{
     uint8_t midiChan = midi_MidiChannels[voice];
 		seq_sendMidiNoteOn(midiChan, note, vel);

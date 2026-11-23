@@ -1510,7 +1510,7 @@ static void midiParser_noteOn(uint8_t voice, uint8_t note, uint8_t vel, uint8_t 
 				return; // note does not match. Do nothing
 		}
 
-		voiceControl_noteOn(voice,note,vel);
+		voiceControl_noteOn(voice,note,vel,1);
 
 		//Recording Mode - record the note to sequencer and echo to channel of that voice
 		// (we'd want to hear what's being recorded)
