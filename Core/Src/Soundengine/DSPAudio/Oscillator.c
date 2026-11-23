@@ -167,7 +167,10 @@ IN_ITCM_RAM void calcFmBlock(OscInfo* osc, const int16_t table[][1024], int16_t*
 		uint32_t  itg	= index>>22; //10 bit index, 22 bit fractional part
 
 	#if INTERPOLATE_FM_OSC
-		oscOut = table[osc->tableOffset][itg++];
+		oscOut = table[osc->tableOffset][itg];
+		/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+		   of the same row, not index 1024 of the next one. */
+		itg = (itg + 1u) & 0x3FFu;
 		//const float frac	= (index&0x003FFFFF)*2.38418579101562e-07f;
 		//oscOut += frac*(table[osc->tableOffset][itg] - oscOut);
 		uint32_t frac = index & 0x3FFFFF;
@@ -197,13 +200,19 @@ void calcPwmFmBlock(OscInfo* osc, int16_t* modBuffer, int16_t* buf, uint8_t size
 		 uint32_t  itg2 = index2>>22;
 
 	#if INTERPOLATE_FM_OSC
-		oscOut = sawTable[osc->tableOffset][itg++];
+		oscOut = sawTable[osc->tableOffset][itg];
+		/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+		   of the same row, not index 1024 of the next one. */
+		itg = (itg + 1u) & 0x3FFu;
 		//const float frac	= (index&0x003FFFFF)*2.38418579101562e-07f;
 		//oscOut += frac*(sawTable[osc->tableOffset][itg] - oscOut);
 		uint32_t frac = index & 0x3FFFFF;
 		oscOut = oscOut + (int16_t)(((int64_t)(sawTable[osc->tableOffset][itg] - oscOut) * frac)   >>22);
 
-		int16_t osc2Out = sawTable[osc->tableOffset][itg2++];// * -1;
+		int16_t osc2Out = sawTable[osc->tableOffset][itg2];// * -1;
+		/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+		   of the same row, not index 1024 of the next one. */
+		itg2 = (itg2 + 1u) & 0x3FFu;
 		//const float frac	= (index&0x003FFFFF)*2.38418579101562e-07f;
 		frac = index2 & 0x3FFFFF;
 		//osc2Out += frac*(sawTable[osc->tableOffset][itg2] * -1 - osc2Out);
@@ -233,7 +242,10 @@ int16_t calcFm(OscInfo* osc, OscInfo* modOsc, const int16_t table[][1024])
 	uint32_t  itg	= index>>22;
 
 #if INTERPOLATE_FM_OSC
-	oscOut = table[osc->tableOffset][itg++];
+	oscOut = table[osc->tableOffset][itg];
+	/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+	   of the same row, not index 1024 of the next one. */
+	itg = (itg + 1u) & 0x3FFu;
 	//const float frac	= (index&0x003FFFFF)*2.38418579101562e-07f;
 	//oscOut += frac*(table[osc->tableOffset][itg] - oscOut);
 	uint32_t frac = index & 0x3FFFFF;
@@ -457,9 +469,15 @@ IN_ITCM_RAM void calcWavetableOscBlock(OscInfo* osc, const int16_t table[][1024]
 			uint32_t  itg	= oscPhase>>22;
 		#if INTERPOLATE_OSC
 			//todo use ldm instead of ldr to load multiple values from memory
-			oscOut = table[osc->tableOffset][itg++];
+			oscOut = table[osc->tableOffset][itg];
 			//const float frac = (itg&0x003FFFFF)*2.38418579101562e-07f; //2.38... => 1.f/0x3fffff
 			//oscOut += frac*(table[osc->tableOffset][itg] - oscOut);
+			/* The phase wraps, so the sample after 1023 is 0 of the same row.
+			   The post-increment this replaces read index 1024 of a
+			   1024-element row: for every row but the last that is the first
+			   sample of the *next* waveform, and for the last it is past the
+			   table. */
+			itg = (itg + 1u) & 0x3FFu;
 			uint32_t frac = oscPhase & 0x3FFFFF;
 			oscOut = oscOut + (int16_t)(((int64_t)(table[osc->tableOffset][itg] - oscOut) * frac)   >>22);
 		#else
@@ -481,7 +499,10 @@ int16_t calcWavetableOsc(OscInfo* osc,  const int16_t table[][1024])
 
 #if INTERPOLATE_OSC
 	//todo use ldm instead of ldr to laod multiple values from memory
-	oscOut = table[osc->tableOffset][itg++];
+	oscOut = table[osc->tableOffset][itg];
+	/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+	   of the same row, not index 1024 of the next one. */
+	itg = (itg + 1u) & 0x3FFu;
 	//const float frac = (itg&0x003FFFFF)*2.38418579101562e-07f; //2.38... => 1.f/0x3fffff
 	//oscOut += frac*(table[osc->tableOffset][itg] - oscOut);
 	uint32_t frac = oscPhase & 0x3FFFFF;
@@ -669,18 +690,24 @@ IN_ITCM_RAM void calcPwmBlock(OscInfo* osc, int16_t* buf, uint8_t size ,const fl
 
 
 		#if INTERPOLATE_FM_OSC
-			oscOut = sawTable[osc->tableOffset][itg++];
+			oscOut = sawTable[osc->tableOffset][itg];
+			/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+			   of the same row, not index 1024 of the next one. */
+			itg = (itg + 1u) & 0x3FFu;
 			//const float frac	= (oscPhase&0x003FFFFF)*2.38418579101562e-07f;
 			//const float frac = (itg&0x003FFFFF)*2.38418579101562e-07f;
 			//oscOut += frac*(sawTable[osc->tableOffset][itg] - oscOut);
 			uint32_t frac = oscPhase & 0x3FFFFF;
 			oscOut = oscOut + (int16_t)(((int64_t)(sawTable[osc->tableOffset][itg] - oscOut) * frac)   >>22);
 
-			int16_t osc2Out = sawTable[osc->tableOffset][itg2++] ;//* -1;
+			int16_t osc2Out = sawTable[osc->tableOffset][itg2] ;//* -1;
+			/* The row is 1024 long and the phase wraps, so the sample after 1023 is 0
+			   of the same row, not index 1024 of the next one. */
+			itg2 = (itg2 + 1u) & 0x3FFu;
 			//const float frac	= (index&0x003FFFFF)*2.38418579101562e-07f;
 			//osc2Out += frac*(sawTable[osc->tableOffset][itg2] * -1 - osc2Out);
 			frac = oscPhase2 & 0x3FFFFF;
-			osc2Out = osc2Out + (int16_t)(((int64_t)(sawTable[osc->tableOffset][itg2++] - osc2Out) * frac)   >>22);
+			osc2Out = osc2Out + (int16_t)(((int64_t)(sawTable[osc->tableOffset][itg2] - osc2Out) * frac)   >>22);
 
 			oscOut =  __QSUB16(oscOut,osc2Out);
 
