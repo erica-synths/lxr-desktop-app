@@ -845,6 +845,7 @@ if(sd_card_ok)
 	{
 		preset_loadDrumsetRam(seq_patternSet.kitNr[seq_activePattern], 0, 1);
 		menu_selectedPresetNr[SAVE_TYPE_KIT] = seq_patternSet.kitNr[seq_activePattern];
+		menu_loadedPresetNr[CURRENT_KIT] = seq_patternSet.kitNr[seq_activePattern];
 	}
 #endif
 
