@@ -1260,6 +1260,15 @@ static uint8_t interpolate(uint8_t a, uint8_t b, uint8_t x)
 }
 
 //----------------------------------------------------
+// These slots store MIDI transport state, not sound parameters.
+static uint8_t preset_isTransportParameter(uint8_t paramNr)
+{
+	return paramNr == PAR_NRPN_DATA_ENTRY_COARSE ||
+		paramNr == PAR_NRPN_FINE || paramNr == PAR_NRPN_COARSE ||
+		paramNr == PAR_BANK_CHANGE;
+}
+
+//----------------------------------------------------
 IN_ITCM_RAM void preset_sendDrumsetParametersImmediate()
 {
 		//special case mod targets
@@ -1305,6 +1314,11 @@ IN_ITCM_RAM void preset_sendDrumsetParametersImmediate()
 		{
 
 			uint8_t paramNumber = parameterOrder[i];
+			if(preset_isTransportParameter(paramNumber))
+			{
+				soundengine_process();
+				continue;
+			}
 
 			//const uint8_t morph = activeParameters[PAR_MORPH];
 
@@ -2132,6 +2146,14 @@ void preset_morph_tick()
 	if(morph_state)
 	{
 
+		// Consume the reserved slot's tick without executing a MIDI command.
+		// All transport slots precede the final sound parameter.
+		if(preset_isTransportParameter(morph_index))
+		{
+			morph_index++;
+			return;
+		}
+		
 		uint8_t morph;
 
 		//Do not morph audio routing
