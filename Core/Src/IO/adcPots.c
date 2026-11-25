@@ -21,9 +21,22 @@
 #define MIN( a, b ) (a < b) ? a : b
 #define USE_ATAN2 0
 
+// A pot change is only accepted if the hysteresis threshold is exceeded on this many
+// consecutive ADC scans. Rejects single sample spikes on an unmoved pot.
+#define POT_PERSIST_SCANS 3
+
 
 INDTCMZ uint16_t adc_buf[ADC_BUF_LEN];
 uint16_t adc_buf_old[ADC_BUF_LEN];
+
+// incremented by the ADC DMA transfer complete IRQ after every full 14 channel scan
+static volatile uint32_t adc_scanCount = 0;
+// scan number each pot was last evaluated on, so the same sample is never counted twice
+static uint32_t adc_potLastScan[4];
+// number of consecutive scans the pot exceeded the hysteresis threshold
+static uint8_t adc_potPersistCnt[4];
+// set once the pots have been initialised from the first complete scan
+static uint8_t adc_potsPrimed = 0;
 
 /*
 uint16_t adc2_buf[ADC2_BUF_LEN];
@@ -170,6 +183,15 @@ uint16_t calcPosition(uint16_t a, uint16_t b)
 #endif
 }
 //------------------------------------------------------------------------
+// called from DMA2_Stream0 IRQ (circular DMA) each time adc_buf has been filled completely
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	if(hadc->Instance == ADC1)
+	{
+		adc_scanCount++;
+	}
+}
+//------------------------------------------------------------------------
 
 void adc_checkPots()
 {
@@ -194,11 +216,62 @@ void adc_checkPots()
 	}
 #else
 
+	const uint32_t scan = adc_scanCount;
+
+	// no complete scan yet -> adc_buf does not contain valid data
+	if(scan == 0) return;
+
+	if(!adc_potsPrimed)
+	{
+		// first valid data: take the current pot positions as reference without
+		// sending a value change. Gives a defined state before the preset is loaded.
+		for(uint8_t i=0;i<4;i++)
+		{
+			const uint16_t a = adc_buf[i*2];
+			const uint16_t b = adc_buf[i*2+1];
+			adc_buf_old[i*2]   = a;
+			adc_buf_old[i*2+1] = b;
+
+			const uint8_t paramDType = menu_getDisplayParameterType(i);
+			const uint8_t shiftAmount = (paramDType == DTYPE_MENU) ? 4 : 1;
+			adc_potValues[i] = calcPosition(a>>4, b>>4) >> shiftAmount;
+
+			adc_potPersistCnt[i] = 0;
+			adc_potLastScan[i] = scan;
+		}
+		adc_potsPrimed = 1;
+		return;
+	}
+
 	//uint8_t i = adc_idx;
 	for(uint8_t i=0;i<4;i++)
 	{
-		if( ((adc_buf[i*2]>>4) > ((adc_buf_old[i*2]>>4) + HYSTERSIS)) ||
-			((adc_buf_old[i*2]>>4) > ((adc_buf[i*2]>>4) + HYSTERSIS)))
+		// only evaluate each scan once per pot
+		if(adc_potLastScan[i] == scan) continue;
+		adc_potLastScan[i] = scan;
+
+		// snapshot both wipers, DMA keeps writing adc_buf in the background
+		const uint16_t a = adc_buf[i*2];
+		const uint16_t b = adc_buf[i*2+1];
+		const uint16_t a12 = a>>4;
+		const uint16_t b12 = b>>4;
+		const uint16_t aOld12 = adc_buf_old[i*2]>>4;
+		const uint16_t bOld12 = adc_buf_old[i*2+1]>>4;
+
+		const uint8_t exceeded =
+			(a12 > (aOld12 + HYSTERSIS)) || (aOld12 > (a12 + HYSTERSIS)) ||
+			(b12 > (bOld12 + HYSTERSIS)) || (bOld12 > (b12 + HYSTERSIS));
+
+		if(!exceeded)
+		{
+			// back inside the hysteresis window -> was only a spike
+			adc_potPersistCnt[i] = 0;
+			continue;
+		}
+
+		if(++adc_potPersistCnt[i] < POT_PERSIST_SCANS) continue;
+		adc_potPersistCnt[i] = 0;
+
 		{
 
 			//slow down menu dtype
@@ -217,9 +290,10 @@ void adc_checkPots()
       }
 
 
-			adc_buf_old[i*2] = adc_buf[i*2];
+			adc_buf_old[i*2]   = a;
+			adc_buf_old[i*2+1] = b;
 			//>> 1 to reduce resolution and increase pot travel
-			uint16_t newValue = calcPosition(adc_buf[i*2]>>4, adc_buf[i*2+1]>>4) >>shiftAmount;
+			uint16_t newValue = calcPosition(a12, b12) >>shiftAmount;
 
 		   if (newValue !=  adc_potValues[i] )
 		   {

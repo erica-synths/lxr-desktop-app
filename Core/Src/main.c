@@ -1107,7 +1107,11 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  /* 144 cycles @ 13.5 MHz ADC clock = 10.7 us sample time per channel.
+   * 3 cycles was too short for the pot wiper impedance: the S/H cap did not settle
+   * and charge from the previous channel leaked into the next one (pots coupling).
+   * Full 14 channel scan now takes ~162 us. Applies to all ranks (sConfig is reused). */
+  sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
