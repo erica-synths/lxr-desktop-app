@@ -298,10 +298,13 @@ uint8_t seq_getTrackLength(uint8_t trackNr)
 #else
 	uint8_t r=seq_patternSet.length[frontParser_shownPattern][trackNr];
 #endif
-	/*
-	if(r==0)
+	/* 0 means 16, as seq_triggerNextMasterStep() says. Without this the
+	   last-step page shows 0 for a 16-step track and the encoder goes to 1
+	   from there, while the sequencer plays 16 (S-B1).
+	   16, not NUM_STEPS: the rule dates from when the field was 4 bits wide
+	   and one bar long, and NUM_STEPS is 64 since the four-bar rework. */
+	if(r == 0)
 		return 16;
-	*/
 	return r;
 }
 //------------------------------------------------------------------------------
@@ -828,13 +831,24 @@ IN_ITCM_RAM void seq_setPendingPatternActive()
 }
 
 
+/* The format stores a length of 16 as 0, as seq_triggerNextMasterStep() says.
+   Three readers remap it and five did not: three used the stored byte as a
+   divisor, one as a sort key and one showed it on the display. Marked noinline
+   on purpose - several of the callers live in ITCM, and one out-of-line copy of
+   the rule costs less of that region than the remap inlined into each. */
+__attribute__((noinline)) static uint8_t seq_trackLength(uint8_t pattern, uint8_t track)
+{
+	const uint8_t length = seq_patternSet.length[pattern][track];
+	return length ? length : 16;		/* one bar, not NUM_STEPS (64) */
+}
+
 uint8_t seq_getLongestTrack()
 {
 	uint8_t trackId = 0;
 
 	for(int i=1;i<NUM_TRACKS;i++)
 	{
-		if(seq_patternSet.length[seq_activePattern][i] > seq_patternSet.length[seq_activePattern][trackId])
+		if(seq_trackLength(seq_activePattern, i) > seq_trackLength(seq_activePattern, trackId))
 		{
 			trackId = i;
 		}
@@ -942,7 +956,7 @@ uint32_t flamIdxToPattern(uint8_t flamIdx)
 uint32_t seq_getShiftFlamPattern(const uint8_t track, uint8_t step, StepPosition stepPos)
 {
 #if 0
-	const uint8_t length = seq_patternSet.length[seq_activePattern][track];
+	const uint8_t length = seq_trackLength(seq_activePattern, track);
 	const uint8_t nextStep = (step+1)%length;
 	const uint8_t prevStep = step != 0 ? step - 1 : length-1;
 
@@ -1106,7 +1120,7 @@ void seq_processFlam(uint8_t idx)
 		{
 			//pattern takes main step active and probability into account
 #if 1
-			const uint8_t length = seq_patternSet.length[seq_activePattern][track];
+			const uint8_t length = seq_trackLength(seq_activePattern, track);
 			const uint8_t currentStep = seq_stepIndex[track];
 			const uint8_t nextStep = (seq_stepIndex[track]+1)%length;
 			const uint8_t prevStep = seq_stepIndex[track] != 0 ? seq_stepIndex[track] - 1 : length-1;
@@ -1171,7 +1185,7 @@ void seq_processFlam(uint8_t idx)
 
 
 					uint8_t flamCurrentStep = seq_patternSet.seq_stepTiming[seq_activePattern][track][seq_stepIndex[track]]+1;
-					uint8_t length = patternSet->length[seq_activePattern][track];
+					uint8_t length = seq_trackLength(seq_activePattern, track);
 					uint8_t flamNextStep = seq_patternSet.seq_stepTiming[seq_activePattern][track][(seq_stepIndex[track]+1)%length]+1;
 					uint8_t shift = 0;
 					switch(flamCurrentStep)
@@ -2399,7 +2413,7 @@ void seq_addNote(uint8_t trackNr,uint8_t vel, uint8_t note)
 		*/
 
 		//limit to track length
-		quantizedStep = quantizedStep%seq_patternSet.length[targetPattern][trackNr];
+		quantizedStep = quantizedStep%seq_trackLength(targetPattern, trackNr);
 		if(step != quantizedStep)
 		{
 			step = quantizedStep;
