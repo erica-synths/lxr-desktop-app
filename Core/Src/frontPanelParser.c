@@ -111,6 +111,7 @@ void frontPanel_ccHandler()
 		// so values past the last kit wrap around (64 = kit 0, 127 = kit 63).
 		const uint8_t kitNr = frontParser_midiMsg.data2 % NUM_KIT_SLOTS;
 		menu_selectedPresetNr[0] = kitNr;
+		menu_loadedPresetNr[CURRENT_KIT] = kitNr;
 		//preset_loadDrumset(kitNr, 0);
 		preset_loadDrumsetRam(kitNr,0, 0);
 		preset_touchTimer(PRESET_KIT_TIMER);

@@ -215,7 +215,7 @@ FRESULT preset_saveTmpKit()
 	}
 
 	//write current preset nr to file
-	res = f_write((FIL*)&SDFile,(void*)&menu_selectedPresetNr[SAVE_TYPE_KIT],1,&bytesWritten);
+	res = f_write((FIL*)&SDFile,(void*)&menu_loadedPresetNr[CURRENT_KIT],1,&bytesWritten);
 	if(res != FR_OK)
 	{
 		f_close((FIL*)&SDFile);
@@ -257,6 +257,7 @@ FRESULT preset_LoadTmpKit()
 	}
 
 	menu_selectedPresetNr[SAVE_TYPE_KIT] = kitNr;
+	menu_loadedPresetNr[CURRENT_KIT] = kitNr;
 
 
 	//read the file content
@@ -2318,7 +2319,7 @@ FRESULT preset_saveProject(uint8_t presetNr)
 	FRESULT res;
 	FILINFO fno;
 
-	preset_saveDrumsetRam(menu_selectedPresetNr[SAVE_TYPE_KIT], 0);
+	preset_saveDrumsetRam(menu_loadedPresetNr[CURRENT_KIT], 0);
 	preset_savePatternRAM(seq_activePattern);
 
 #if USE_INTERRUPT_ONLY_DURING_SAVE_PROJ
