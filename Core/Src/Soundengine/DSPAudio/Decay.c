@@ -20,6 +20,9 @@
 //-------------------------------------------------
 float DecayEg_calcSlopeValue(float val, float slope)
 {
+	// Slope -1 (EG Slope 0) gives 0 for every val, but with the envelope held
+	// at 1 (Pitch Decay 127) it would compute 0/0, so return 0 without dividing.
+	if(slope <= -1.f) return 0.f;
 	return (1+slope)*val/(1+slope*fabsf(val));
 }
 //-------------------------------------------------
