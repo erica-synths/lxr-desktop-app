@@ -73,7 +73,10 @@ void DecayEg_setDecay(DecayEg* eg, uint8_t data2)
 //--------------------------------------------------
 IN_ITCM_RAM void DecayEg_setSlope(DecayEg* eg, uint8_t data2)
 {
-	const float amount 	= ((data2/127.f)-0.5f)*2;
+	float amount 		= ((data2/127.f)-0.5f)*2;
+	// At 127 the amount is 1 and the slope would divide by zero.
+	// Use the same top value as slopeEg2_setSlope() (0.5f*1.999f).
+	if(amount > 0.9995f) amount = 0.9995f;
 	eg->slope 			= 2*amount/(1-amount);
 }
 //--------------------------------------------------
